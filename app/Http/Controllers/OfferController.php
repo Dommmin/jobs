@@ -17,20 +17,13 @@ class OfferController extends Controller
         $filters = $request->only(['search', 'location', 'experience', 'contract', 'specialization', 'workType']);
         $sortOrder = $request->get('sort', 'newest');
 
-        $locations = Location::get(['name', 'slug']);
-        $experiences = Experience::get(['name', 'slug']);
-        $contracts = Contract::get(['name', 'slug']);
-        $specializations = Specialization::get(['name', 'slug']);
-        $workTypes = WorkType::get(['name', 'slug']);
-
         return inertia('Offers/Index', [
-            'offers' => $offers = Offer::getPaginatedOffers($filters, $sortOrder),
-            'locations' => $locations,
-            'experiences' => $experiences,
-            'contracts' => $contracts,
-            'specializations' => $specializations,
-            'workTypes' => $workTypes,
-            'total' => $offers['total'],
+            'offers' => Offer::getPaginatedOffers($filters, $sortOrder),
+            'locations' => Location::get(['name', 'slug']),
+            'experiences' => Experience::get(['name', 'slug']),
+            'contracts' => Contract::get(['name', 'slug']),
+            'specializations' => Specialization::get(['name', 'slug']),
+            'workTypes' => WorkType::get(['name', 'slug']),
             'filters' => $filters,
         ]);
     }

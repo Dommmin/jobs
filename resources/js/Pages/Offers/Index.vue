@@ -101,10 +101,10 @@
             <div class="space-y-6">
                 <div class="flex items-center justify-between">
                     <h1 class="text-3xl italic font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text">
-                        {{ total }} Offers Found
+                        {{ offers.total }} Offers Found
                     </h1>
                     <span class="text-sm text-gray-500">
-                        Showing {{ offers.data.length }} of {{ total }} results
+                        Showing from {{ offers.from }} to {{ offers.to }} of {{ offers.total }}
                     </span>
                 </div>
 
@@ -246,7 +246,6 @@ const props = defineProps<{
     experiences: Array<{ slug: string; name: string }>;
     contracts: Array<{ slug: string; name: string }>;
     specializations: Array<{ slug: string; name: string }>;
-    total: number;
     filters: Filters;
 }>();
 
@@ -263,11 +262,13 @@ const sortOrder = ref('latest');
 
 const activeFilters = computed(() => {
     const active: Record<string, string> = {};
+
     Object.entries(filters.value).forEach(([key, value]) => {
         if (value) {
             active[key] = `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`;
         }
     });
+
     return active;
 });
 
