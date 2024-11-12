@@ -17,12 +17,12 @@ class Offer extends Model
 
     protected $guarded = [];
 
-    protected $casts = [
-        'locations' => 'array',
-        'experiences' => 'array',
-        'contracts' => 'array',
-        'specializations' => 'array',
-        'tech_stack' => 'array',
+    protected $appends = [
+        'location_names',
+        'specialization_names',
+        'work_type_names',
+        'contract_names',
+        'experience_names',
     ];
 
     public function company(): BelongsTo
@@ -35,9 +35,19 @@ class Offer extends Model
         return $this->belongsToMany(Location::class, 'offer_locations');
     }
 
+    public function getLocationNamesAttribute(): array
+    {
+        return Arr::pluck($this->locations, 'name');
+    }
+
     public function experiences(): BelongsToMany
     {
         return $this->belongsToMany(Experience::class, 'offer_experiences');
+    }
+
+    public function getExperienceNamesAttribute(): array
+    {
+        return Arr::pluck($this->experiences, 'name');
     }
 
     public function contracts(): BelongsToMany
@@ -45,14 +55,29 @@ class Offer extends Model
         return $this->belongsToMany(Contract::class, 'offer_contracts');
     }
 
+    public function getContractNamesAttribute(): array
+    {
+        return Arr::pluck($this->contracts, 'name');
+    }
+
     public function specializations(): BelongsToMany
     {
         return $this->belongsToMany(Specialization::class, 'offer_specializations');
     }
 
+    public function getSpecializationNamesAttribute(): array
+    {
+        return Arr::pluck($this->specializations, 'name');
+    }
+
     public function workTypes(): BelongsToMany
     {
         return $this->belongsToMany(WorkType::class, 'offer_work_types', 'offer_id', 'work_type_id');
+    }
+
+    public function getWorkTypeNamesAttribute(): array
+    {
+        return Arr::pluck($this->workTypes, 'name');
     }
 
     public function getRouteKeyName(): string
@@ -102,6 +127,11 @@ class Offer extends Model
             ->when($workTypes, function ($query) use ($workTypes) {
                 return $query->whereHas('workTypes', function ($query) use ($workTypes) {
                     $query->whereIn('slug', explode(',', $workTypes));
+                });
+            })
+            ->when($contract, function ($query) use ($contract) {
+                return $query->whereHas('contracts', function ($query) use ($contract) {
+                    $query->whereIn('slug', explode(',', $contract));
                 });
             })
             ->orderBy('id', $sortOrder === 'newest' ? 'desc' : 'asc')

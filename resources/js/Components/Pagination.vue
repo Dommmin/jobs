@@ -8,7 +8,7 @@
                       :class="{ 'bg-white': link.active }"
                       :href="link.url"
                       v-html="link.label"
-                      prefetch
+                      prefetch="hover"
                 />
             </template>
         </div>

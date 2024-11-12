@@ -17,19 +17,6 @@ class OfferController extends Controller
         $filters = $request->only(['search', 'location', 'experience', 'contract', 'specialization', 'workType']);
         $sortOrder = $request->get('sort', 'newest');
 
-        $offers = Offer::getPaginatedOffers($filters, $sortOrder)->toArray();
-
-        $offers['data'] = collect($offers['data'])
-            ->map(function ($offer) {
-                $offer['locations_array'] = collect($offer['locations'])->pluck('name')->toArray();
-                $offer['experiences_array'] = collect($offer['experiences'])->pluck('name')->toArray();
-                $offer['contracts_array'] = collect($offer['contracts'])->pluck('name')->toArray();
-                $offer['specializations_array'] = collect($offer['specializations'])->pluck('name')->toArray();
-                $offer['work_types_array'] = collect($offer['work_types'])->pluck('name')->toArray();
-
-                return $offer;
-            })->toArray();
-
         $locations = Location::get(['name', 'slug']);
         $experiences = Experience::get(['name', 'slug']);
         $contracts = Contract::get(['name', 'slug']);
@@ -37,7 +24,7 @@ class OfferController extends Controller
         $workTypes = WorkType::get(['name', 'slug']);
 
         return inertia('Offers/Index', [
-            'offers' => $offers,
+            'offers' => $offers = Offer::getPaginatedOffers($filters, $sortOrder),
             'locations' => $locations,
             'experiences' => $experiences,
             'contracts' => $contracts,
@@ -53,14 +40,6 @@ class OfferController extends Controller
         $offer->loadMissing([
             'company', 'locations', 'experiences', 'contracts', 'specializations', 'workTypes'
         ]);
-
-        $offer = $offer->toArray();
-
-        $offer['locations_array'] = collect($offer['locations'])->pluck('name')->toArray();
-        $offer['experiences_array'] = collect($offer['experiences'])->pluck('name')->toArray();
-        $offer['contracts_array'] = collect($offer['contracts'])->pluck('name')->toArray();
-        $offer['specializations_array'] = collect($offer['specializations'])->pluck('name')->toArray();
-        $offer['work_types_array'] = collect($offer['work_types'])->pluck('name')->toArray();
 
         return inertia('Offers/Show', [
             'offer' => $offer
