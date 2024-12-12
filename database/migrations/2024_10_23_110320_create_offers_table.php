@@ -23,6 +23,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->json('tech_stack');
             $table->dateTime('expire_at');
+            $table->softDeletes();
             $table->timestamps();
 
 //            $table->fullText('description');

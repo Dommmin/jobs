@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Spatie\Sluggable\HasSlug;
@@ -13,9 +14,11 @@ use Spatie\Sluggable\SlugOptions;
 
 class Offer extends Model
 {
-    use HasFactory, HasSlug;
+    use HasFactory, HasSlug, SoftDeletes;
 
     protected $guarded = [];
+
+    protected $perPage = 20;
 
     protected $appends = [
         'location_names',
@@ -24,6 +27,13 @@ class Offer extends Model
         'contract_names',
         'experience_names',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'tech_stack' => 'array',
+        ];
+    }
 
     public function company(): BelongsTo
     {
@@ -92,15 +102,17 @@ class Offer extends Model
             ->saveSlugsTo('slug');
     }
 
-    public static function getPaginatedOffers(array $filters = [], string $sortOrder = 'newest', int $perPage = 20): LengthAwarePaginator
+    public static function getPaginatedOffers(array $filters = [], int $perPage = 12): LengthAwarePaginator
     {
-        $company = Arr::get($filters, 'company');
-        $locations = Arr::get($filters, 'location');
-        $experiences = Arr::get($filters, 'experience');
-        $workTypes = Arr::get($filters, 'workType');
-        $contract = Arr::get($filters, 'contract');
+        $location       = Arr::get($filters, 'location');
+        $specialization = Arr::get($filters, 'specialization');
+        $experience     = Arr::get($filters, 'experience');
+        $workType       = Arr::get($filters, 'workType');
+        $contract       = Arr::get($filters, 'contract');
+        $search         = Arr::get($filters, 'search');
+        $sortOrder      = Arr::get($filters, 'sortOrder', 'latest');
 
-        return self::query()
+        $query = self::query()
             ->with([
                 'company',
                 'locations',
@@ -109,32 +121,41 @@ class Offer extends Model
                 'experiences',
                 'workTypes',
             ])
-            ->when($company, function ($query) use ($company) {
-                return $query->whereHas('company', function ($query) use ($company) {
-                    $query->where('name', 'like', "%{$company}%");
+            ->when($search, function ($query) use ($search) {
+                return $query->where('title', 'like', "%{$search}%");
+            })
+            ->when($location, function ($query) use ($location) {
+                return $query->whereHas('locations', function ($query) use ($location) {
+                    $query->where('slug', $location);
                 });
             })
-            ->when($locations, function ($query) use ($locations) {
-                return $query->whereHas('locations', function ($query) use ($locations) {
-                    $query->whereIn('slug', explode(',', $locations));
+            ->when($experience, function ($query) use ($experience) {
+                return $query->whereHas('experiences', function ($query) use ($experience) {
+                    $query->where('slug', $experience);
                 });
             })
-            ->when($experiences, function ($query) use ($experiences) {
-                return $query->whereHas('experiences', function ($query) use ($experiences) {
-                    $query->whereIn('slug', explode(',', $experiences));
-                });
-            })
-            ->when($workTypes, function ($query) use ($workTypes) {
-                return $query->whereHas('workTypes', function ($query) use ($workTypes) {
-                    $query->whereIn('slug', explode(',', $workTypes));
+            ->when($workType, function ($query) use ($workType) {
+                return $query->whereHas('workTypes', function ($query) use ($workType) {
+                    $query->where('slug', $workType);
                 });
             })
             ->when($contract, function ($query) use ($contract) {
                 return $query->whereHas('contracts', function ($query) use ($contract) {
-                    $query->whereIn('slug', explode(',', $contract));
+                    $query->where('slug', $contract);
                 });
             })
-            ->orderBy('id', $sortOrder === 'newest' ? 'desc' : 'asc')
-            ->paginate($perPage);
+            ->when($specialization, function ($query) use ($specialization) {
+                return $query->whereHas('specializations', function ($query) use ($specialization) {
+                    $query->where('slug', $specialization);
+                });
+            });
+
+        match ($sortOrder) {
+            'salary_max' => $query->orderBy('salary_max', 'desc'),
+            'salary_min' => $query->orderBy('salary_min', 'asc'),
+            default => $query->orderBy('created_at', 'desc'),
+        };
+
+        return $query->paginate($perPage);
     }
 }

@@ -9,10 +9,14 @@
                 <div class="mb-4 form-control">
                     <div class="input-group">
                         <input
+                            v-model="searchQuery"
                             type="text"
                             placeholder="Search by title or company..."
                             class="w-full input input-bordered"
                         />
+                        <div v-if="isSearching" class="absolute right-3 top-3">
+                            <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -74,11 +78,11 @@
                     </select>
 
                     <select
-                        v-model="sortOrder"
+                        v-model="filters.sortOrder"
                         class="w-full transition-all select select-bordered hover:select-primary"
                         @change="applyFilters"
                     >
-                        <option value="latest">⭐ Newest First</option>
+                        <option value="">⭐ Newest First</option>
                         <option value="salary_max">💰 Highest Salary</option>
                         <option value="salary_min">💰 Lowest Salary</option>
                     </select>
@@ -86,14 +90,20 @@
 
                 <!-- Active Filters -->
                 <div class="flex flex-wrap gap-2 mt-4">
-                    <div
-                        v-for="(value, key) in activeFilters"
-                        :key="key"
-                        class="gap-2 badge badge-primary animate-scaleIn"
-                    >
-                        {{ value }}
-                        <button @click="removeFilter(key)" class="btn btn-xs btn-circle">✕</button>
-                    </div>
+                    <TransitionGroup name="filter">
+                        <div
+                            v-for="(value, key) in activeFilters"
+                            :key="key"
+                            class="gap-2 badge badge-primary"
+                        >
+                            {{ value }}
+                            <button
+                                @click="removeFilter(key)"
+                                class="btn btn-xs btn-circle"
+                                aria-label="Remove filter"
+                            >✕</button>
+                        </div>
+                    </TransitionGroup>
                 </div>
             </div>
 
@@ -109,87 +119,19 @@
                 </div>
 
                 <!-- Offers Grid -->
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    <Link
+                <TransitionGroup
+                    name="list"
+                    tag="div"
+                    class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+                >
+                    <JobCard
                         v-for="offer in offers.data"
                         :key="offer.id"
-                        :href="route('offers.show', offer.slug)"
-                        class="relative overflow-hidden transition-all duration-300 transform shadow-lg group bg-base-100 rounded-xl hover:shadow-2xl hover:-translate-y-1"
-                        prefetch="hover"
-                    >
-                        <div class="absolute inset-0 transition-opacity duration-300 opacity-0 bg-primary group-hover:opacity-5"></div>
-                        <div class="p-6 space-y-4">
-                            <!-- Header -->
-                            <div class="space-y-2">
-                                <h3 class="text-lg font-bold transition-colors text-primary group-hover:text-secondary">
-                                    {{ offer.title }}
-                                </h3>
-                                <p class="text-sm text-gray-500">{{ offer.company_name }}</p>
-                            </div>
-
-                            <!-- Salary -->
-                            <div>
-                                <p v-if="!offer.salary_min || !offer.salary_max"
-                                   class="text-sm text-error">
-                                    Unspecified Salary
-                                </p>
-                                <p v-else
-                                   class="text-sm font-semibold text-success">
-                                    {{ formatSalary(offer.salary_min) }} - {{ formatSalary(offer.salary_max) }} PLN
-                                </p>
-                            </div>
-
-                            <!-- Tags Section -->
-                            <div class="space-y-2">
-                                <!-- Work Types -->
-                                <div class="flex flex-wrap gap-2">
-                                    <span
-                                        v-for="work_type in offer.work_type_names"
-                                        :key="work_type"
-                                        class="badge badge-primary badge-sm"
-                                    >
-                                        {{ work_type }}
-                                    </span>
-                                </div>
-
-                                <!-- Locations -->
-                                <div class="flex flex-wrap gap-2">
-                                    <span
-                                        v-for="location in offer.location_names"
-                                        :key="location"
-                                        class="badge badge-ghost badge-sm"
-                                    >
-                                        📍 {{ location }}
-                                    </span>
-                                </div>
-
-                                <!-- Experience & Contract -->
-                                <div class="flex flex-wrap gap-2">
-                                    <span
-                                        v-for="exp in offer.experience_names"
-                                        :key="exp"
-                                        class="badge badge-secondary badge-sm"
-                                    >
-                                        {{ exp }}
-                                    </span>
-                                    <span
-                                        v-for="contract in offer.contract_names"
-                                        :key="contract"
-                                        class="badge badge-accent badge-sm"
-                                    >
-                                        {{ contract }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Footer -->
-                            <div class="flex items-center justify-between text-sm text-gray-500">
-                                <span>{{ formatDate(offer.created_at) }}</span>
-                                <span class="text-primary">View Details →</span>
-                            </div>
-                        </div>
-                    </Link>
-                </div>
+                        :offer="offer"
+                        :format-salary="formatSalary"
+                        :format-date="formatDate"
+                    />
+                </TransitionGroup>
 
                 <!-- Pagination -->
                 <div class="flex justify-center mt-8">
@@ -201,120 +143,69 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed} from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import type { OffersResponse } from '@/Types/offers';
+import type { FilterOption, Filters } from '@/Types/filters';
+import { useDebounce } from '@/Composables/useDebounce';
+import { useFilters } from '@/Composables/useFilters';
+import { useFormatters } from '@/Composables/useFormatters';
 import Pagination from "@/Components/Pagination.vue";
 import AppLayout from "@/Layouts/AppLayout.vue";
+import JobCard from "@/Components/JobCard.vue";
 
-interface Offer {
-    id: number;
-    slug: string;
-    title: string;
-    company_name: string;
-    salary_min: number | null;
-    salary_max: number | null;
-    location_names: string[];
-    work_type_names: string[];
-    experience_names: string[];
-    contract_names: string[];
-    specialization_names: string[];
-    created_at: string;
-}
-
-interface Offers {
-    data: Offer[],
-    links: object,
-}
-
-interface Location {
-    slug: string,
-    name: string,
-}
-
-interface Filters {
-    search: string,
-    location: string,
-    experience: string,
-    contract: string,
-    specialization: string,
-    workType: string,
-}
-
-const props = defineProps<{
-    offers: Offers;
-    locations: Location[],
-    experiences: Array<{ slug: string; name: string }>;
-    contracts: Array<{ slug: string; name: string }>;
-    specializations: Array<{ slug: string; name: string }>;
+interface Props {
+    offers: OffersResponse;
+    locations: FilterOption[];
+    experiences: FilterOption[];
+    contracts: FilterOption[];
+    specializations: FilterOption[];
     filters: Filters;
-}>();
+}
 
-const filters = ref({
-    search: props.filters.search || '',
-    location: props.filters.location || '',
-    experience: props.filters.experience || '',
-    contract: props.filters.contract || '',
-    specialization: props.filters.specialization || '',
-    workType: props.filters.workType || '',
+const props = defineProps<Props>();
+
+const { filters, activeFilters, removeFilter, applyFilters } = useFilters(props.filters);
+const { formatSalary, formatDate } = useFormatters();
+
+const isSearching = ref(false);
+const searchQuery = useDebounce('', 500);
+
+watch(searchQuery, (newValue) => {
+    isSearching.value = true;
+    filters.value.search = newValue;
+    applyFilters();
+    setTimeout(() => {
+        isSearching.value = false;
+    }, 300);
 });
-
-const sortOrder = ref('latest');
-
-const activeFilters = computed(() => {
-    const active: Record<string, string> = {};
-
-    Object.entries(filters.value).forEach(([key, value]) => {
-        if (value) {
-            active[key] = `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`;
-        }
-    });
-
-    return active;
-});
-
-// Helper functions
-const formatSalary = (amount: number): string => {
-    return new Intl.NumberFormat('pl-PL').format(amount);
-};
-
-const formatDate = (date: string): string => {
-    return new Date(date).toLocaleDateString('pl-PL', {
-        day: 'numeric',
-        month: 'short'
-    });
-};
-
-const removeFilter = (key: string) => {
-    filters.value[key as keyof typeof filters.value] = '';
-};
-
-const applyFilters = () => {
-    router.get(route('offers.index'), filters.value);
-};
 </script>
 
 <style scoped>
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+.list-move,
+.list-enter-active,
+.list-leave-active {
+    transition: all 0.5s ease;
 }
 
-@keyframes scaleIn {
-    from {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
+.list-enter-from,
+.list-leave-to {
+    opacity: 0;
+    transform: translateY(30px);
 }
 
-.animate-fadeIn {
-    animation: fadeIn 0.5s ease-out;
+.list-leave-active {
+    position: absolute;
 }
 
-.animate-scaleIn {
-    animation: scaleIn 0.3s ease-out;
+.filter-move,
+.filter-enter-active,
+.filter-leave-active {
+    transition: all 0.3s ease;
+}
+
+.filter-enter-from,
+.filter-leave-to {
+    opacity: 0;
+    transform: scale(0.9);
 }
 </style>

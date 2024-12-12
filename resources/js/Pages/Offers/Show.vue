@@ -86,9 +86,12 @@
                                 </p>
                             </div>
 
-                            <button class="btn btn-primary w-full">
-                                Apply Now
+                            <button v-if="!application" @click="handleApply" class="btn btn-primary w-full">
+                                {{ !$page.props.auth.user ? 'Login First' : 'Apply Now' }}
                             </button>
+                            <div v-else>
+                                You applied for this offer {{ application.created_at }}
+                            </div>
                         </div>
 
                         <!-- Job Details -->
@@ -176,53 +179,77 @@
                     </div>
                 </div>
             </div>
+            <DialogModal :show="showModal">
+                <template #title>
+                    Apply for this Offer?
+                </template>
+
+                <template #content>
+                    <label for="description">Description</label>
+                    <textarea id="description" v-model="form.description" cols="40" rows="3" class="textarea w-full max-w-md"></textarea>
+                    <div v-if="!$page.props.auth.user.cv">You need to add CV to your profile first</div>
+                    <div v-else>
+                        <a :href="'/storage/' + $page.props.auth.user.cv" target="_blank">
+                            <label for="cv">Curriculum Vitae</label>
+                            <input type="text" :value="$page.props.auth.user.cv" class="cursor-pointer input w-full max-w-md" readonly/>
+                        </a>
+                    </div>
+                </template>
+
+                <template #footer>
+                    <SecondaryButton @click="showModal = false">
+                        Cancel
+                    </SecondaryButton>
+
+                    <PrimaryButton class="ml-2" :disabled="!$page.props.auth.user.cv" @click="submit">
+                        Apply
+                    </PrimaryButton>
+                </template>
+            </DialogModal>
         </div>
     </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import {Link, router, useForm} from '@inertiajs/vue3';
 import AppLayout from "@/Layouts/AppLayout.vue";
+import {useFormatters} from "@/Composables/useFormatters";
+import {Offer} from "@/Types/offers";
+import {ref} from "vue";
+import SecondaryButton from "@/Components/SecondaryButton.vue";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import DialogModal from "@/Components/DialogModal.vue";
 
-interface Offer {
-    id: number;
-    slug: string;
-    title: string;
-    company_name: string;
-    description: string;
-    salary_min: number | null;
-    salary_max: number | null;
-    location_names: string[];
-    work_type_names: string[];
-    experience_names: string[];
-    contract_names: string[];
-    specialization_names: string[];
-    tech_stack: string[];
-    created_at: string;
-}
+const { formatSalary, formatDate } = useFormatters();
 
 interface Props {
     offer: Offer;
+    application: {
+        type: [Object, null],
+        required: true,
+    },
     similarOffers?: Offer[];
 }
 
 const props = defineProps<Props>();
 
-// Helper functions
-const formatSalary = (amount: number): string => {
-    return new Intl.NumberFormat('pl-PL').format(amount);
-};
-
-const formatDate = (date: string): string => {
-    return new Date(date).toLocaleDateString('pl-PL', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
-};
-
 const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    // Tu możesz dodać Toast notification
 };
+
+const showModal = ref(false);
+const form = useForm({
+    description: '',
+})
+
+const handleApply = () => {
+    showModal.value = true;
+}
+
+const submit = () => {
+    form.post(route('offers.apply', props.offer.slug), {
+        preserveState: false,
+        onSuccess: () => showModal.value = false,
+    })
+}
 </script>
