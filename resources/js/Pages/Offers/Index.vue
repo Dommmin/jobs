@@ -83,8 +83,8 @@
                         @change="applyFilters"
                     >
                         <option value="">⭐ Newest First</option>
-                        <option value="salary_max">💰 Highest Salary</option>
-                        <option value="salary_min">💰 Lowest Salary</option>
+                        <option value="salary_to">💰 Highest Salary</option>
+                        <option value="salary_from">💰 Lowest Salary</option>
                     </select>
                 </div>
 

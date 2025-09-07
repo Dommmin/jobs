@@ -151,8 +151,8 @@ class Offer extends Model
             });
 
         match ($sortOrder) {
-            'salary_max' => $query->orderBy('salary_max', 'desc'),
-            'salary_min' => $query->orderBy('salary_min', 'asc'),
+            'salary_to' => $query->orderBy('salary_to', 'desc'),
+            'salary_from' => $query->orderBy('salary_from', 'asc'),
             default => $query->orderBy('created_at', 'desc'),
         };
 

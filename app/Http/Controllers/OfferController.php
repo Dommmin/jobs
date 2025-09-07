@@ -19,12 +19,12 @@ class OfferController extends Controller
         $filters = $request->only(['search', 'location', 'experience', 'contract', 'specialization', 'workType', 'sortOrder']);
 
         return inertia('Offers/Index', [
-            'offers' => Offer::getPaginatedOffers($filters),
             'locations' => Location::get(['name', 'slug']),
             'experiences' => Experience::get(['name', 'slug']),
             'contracts' => Contract::get(['name', 'slug']),
             'specializations' => Specialization::get(['name', 'slug']),
             'workTypes' => WorkType::get(['name', 'slug']),
+            'offers' => Offer::getPaginatedOffers($filters),
             'filters' => $filters,
         ]);
     }

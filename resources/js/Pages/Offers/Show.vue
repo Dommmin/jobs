@@ -78,8 +78,8 @@
                         <div class="space-y-4">
                             <div class="p-4 bg-base-200 rounded-lg">
                                 <h3 class="text-lg font-semibold mb-2">Salary Range</h3>
-                                <p v-if="offer.salary_min && offer.salary_max" class="text-2xl font-bold text-success">
-                                    {{ formatSalary(offer.salary_min) }} - {{ formatSalary(offer.salary_max) }} PLN
+                                <p v-if="offer.salary_max && offer.salary_to" class="text-2xl font-bold text-success">
+                                    {{ formatSalary(offer.salary_max) }} - {{ formatSalary(offer.salary_to) }} PLN
                                 </p>
                                 <p v-else class="text-lg text-error">
                                     Salary not specified

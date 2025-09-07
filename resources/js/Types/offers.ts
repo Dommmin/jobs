@@ -3,8 +3,8 @@ export interface Offer {
     slug: string;
     title: string;
     company_name: string;
-    salary_min: number | null;
-    salary_max: number | null;
+    salary_from: number | null;
+    salary_to: number | null;
     location_names: string[];
     work_type_names: string[];
     experience_names: string[];

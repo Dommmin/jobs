@@ -16,13 +16,13 @@
 
             <!-- Salary -->
             <div>
-                <p v-if="!offer.salary_min || !offer.salary_max"
+                <p v-if="!offer.salary_from || !offer.salary_to"
                    class="text-sm text-error">
                     Unspecified Salary
                 </p>
                 <p v-else
                    class="text-sm font-semibold text-success">
-                    {{ formatSalary(offer.salary_min) }} - {{ formatSalary(offer.salary_max) }} PLN
+                    {{ formatSalary(offer.salary_from) }} - {{ formatSalary(offer.salary_to) }} PLN
                 </p>
             </div>
 

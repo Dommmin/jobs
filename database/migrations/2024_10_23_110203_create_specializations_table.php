@@ -16,6 +16,9 @@ return new class extends Migration
             $table->string('name', 50)->unique();
             $table->string('slug', 50)->unique();
             $table->timestamps();
+
+            $table->index('name');
+            $table->index('slug');
         });
     }
 
